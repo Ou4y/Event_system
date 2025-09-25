@@ -24,6 +24,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   bool _isProcessing = false;
 
+  // Flash state
+  bool _isFlashOn = false;
+  bool _hasFlash = false;
+
   // FIX 3: Create service instance once for efficiency
   final OcrService _ocrService = OcrService();
 
@@ -48,6 +52,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
           enableAudio: false,
         );
         await _controller!.initialize();
+        // Remove unsupported flash checks
         // FIX 2: Add mounted check for stability
         if (mounted) {
           setState(() {
@@ -115,7 +120,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
     return croppedFile;
   }
 
-
+  
  // In your _ScannerScreenState class
 
 Future<void> _captureAndScan() async {
@@ -169,6 +174,27 @@ Future<void> _captureAndScan() async {
   }
 }
 
+  Future<void> _toggleFlash() async {
+    if (_controller == null || !_controller!.value.isInitialized) return;
+    try {
+      if (_isFlashOn) {
+        await _controller!.setFlashMode(FlashMode.off);
+      } else {
+        await _controller!.setFlashMode(FlashMode.torch);
+      }
+      setState(() {
+        _isFlashOn = !_isFlashOn;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No flash available on this device.')),
+        );
+      }
+      debugPrint('Failed to toggle flash: $e');
+    }
+  }
+
   String? _validateId(String? value) {
     if (value == null || value.isEmpty) return 'ID required';
     final universityIdReg = RegExp(r'^\d{4}-\d{5}$'); // e.g. 2022-08868
@@ -221,6 +247,16 @@ Future<void> _captureAndScan() async {
                         decoration: BoxDecoration(
                           border: Border.all(color: _isProcessing ? Colors.orange : Colors.white, width: 3),
                           borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      // Flash toggle button (top right corner of preview)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: IconButton(
+                          icon: Icon(_isFlashOn ? Icons.flash_on : Icons.flash_off, color: Colors.yellowAccent, size: 32),
+                          onPressed: _toggleFlash,
+                          tooltip: _isFlashOn ? 'Turn Flash Off' : 'Turn Flash On',
                         ),
                       ),
                     ],
