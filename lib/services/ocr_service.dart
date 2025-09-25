@@ -13,15 +13,18 @@ class OcrService {
     final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
     final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
     await textRecognizer.close();
-    final text = recognizedText.text.replaceAll(RegExp(r'\s+'), '');
-    // Extract 9 or 14 digit numbers
-    final matches = RegExp(r'\b(\d{9}|\d{14})\b').allMatches(text);
-    for (final match in matches) {
-      final id = match.group(0);
-      if (id != null && (id.length == 9 || id.length == 14)) {
-        return id;
-      }
+    final text = recognizedText.text;
+    // Try to match university ID (YYYY-#####)
+    final universityIdMatch = RegExp(r'\b\d{4}-\d{5}\b').firstMatch(text);
+    if (universityIdMatch != null) {
+      return universityIdMatch.group(0);
     }
+    // Try to match 14-digit national ID
+    final nationalIdMatch = RegExp(r'\b\d{14}\b').firstMatch(text.replaceAll(RegExp(r'\D'), ''));
+    if (nationalIdMatch != null) {
+      return nationalIdMatch.group(0);
+    }
+    // Fallback: return the raw text for debugging
     return null;
   }
 }
